@@ -70,19 +70,11 @@ before-package::
         echo "\033[31mError: YTLitePlus.dylib not found.\033[0m"; exit 1; \
     fi
 
-    # Copy FLEX resources
-	@if [ -d Tweaks/FLEX ]; then \
-        cp -R Tweaks/FLEX/* $(THEOS_STAGING_DIR)/Library/MobileSubstrate/DynamicLibraries/; \
-        echo "==> \033[32mFLEX resources copied successfully.\033[0m"; \
-    else \
-        echo "\033[33mWarning: FLEX resources not found, skipping.\033[0m"; \
-    fi
-
     # Copy YTLitePlus.bundle
 	@echo -e "==> \033[1mMoving YTLitePlus.bundle to Application Support...\033[0m"
-	@mkdir -p $(THEOS_STAGING_DIR)/Library/Application\ Support/YTLitePlus
+	@mkdir -p $(THEOS_STAGING_DIR)/Library/Application\ Support/YTLitePlus.bundle
 	@if [ -d lang/YTLitePlus.bundle ]; then \
-        cp -R lang/YTLitePlus.bundle/* $(THEOS_STAGING_DIR)/Library/Application\ Support/YTLitePlus/; \
+        cp -R lang/YTLitePlus.bundle/* $(THEOS_STAGING_DIR)/Library/Application\ Support/YTLitePlus.bundle/; \
         echo "==> \033[32mYTLitePlus.bundle copied successfully.\033[0m"; \
     else \
         echo "\033[33mWarning: YTLitePlus.bundle not found, skipping.\033[0m"; \
