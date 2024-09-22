@@ -1,8 +1,8 @@
-Package: com.yourname.ytliteplus
+Package: com.ytliteplus.ytliteplus
 Name: YTLitePlus
-Version: X.X.X-X.X
+Version: 1.0
 Architecture: iphoneos-arm
 Description: Tweak for YouTube
-Maintainer: Your Name <your.email@example.com>
+Maintainer: ytliteplus
 Depends: mobilesubstrate (>= 0.9.5000), firmware (>= 14.0)
 Section: Tweaks

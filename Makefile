@@ -3,7 +3,7 @@ TARGET = iphone:clang:16.5:14.0
 ARCHS = arm64 arm64e
 MODULES = jailed
 FINALPACKAGE = 1
-PACKAGE_VERSION = X.X.X-X.X
+PACKAGE_VERSION = 1.0
 
 # Tweak-specific details
 TWEAK_NAME = YTLitePlus
@@ -20,8 +20,8 @@ export ADDITIONAL_CFLAGS = $(EXTRA_CFLAGS)
 # Source files
 YTLitePlus_FILES = \
     YTLitePlus.xm \
-    $(shell find Source -name '*.xm' -o -name '*.x' -o -name '*.m') \
-    $(shell find Tweaks/FLEX -type f \( -iname \*.c -o -iname \*.m -o -iname \*.mm \))
+$(shell find Source -name '*.xm' -o -name '*.x' -o -name '*.m') \
+$(shell find Tweaks/FLEX -type f \( -iname \*.c -o -iname \*.m -o -iname \*.mm \))
 
 # Compiler flags and frameworks
 YTLitePlus_CFLAGS = -fobjc-arc \
@@ -29,7 +29,15 @@ YTLitePlus_CFLAGS = -fobjc-arc \
     -Wno-unsupported-availability-guard \
     -Wno-unused-but-set-variable \
     -DTWEAK_VERSION=$(PACKAGE_VERSION) \
-    $(EXTRA_CFLAGS)
+$(EXTRA_CFLAGS)
+
+# Ensure we link the correct Substrate library
+YTLitePlus_LDFLAGS += -F$(SUBSTRATE)
+YTLitePlus_LIBRARIES += substrate
+
+# Remove obsolete flags and duplicates
+YTLitePlus_LDFLAGS := $(filter-out -multiply_defined%,$(YTLitePlus_LDFLAGS))
+YTLitePlus_LDFLAGS := $(filter-out -lc++,$(YTLitePlus_LDFLAGS))
 
 YTLitePlus_FRAMEWORKS = UIKit Security
 
@@ -44,41 +52,45 @@ INSTALL_TARGET_PROCESSES = YouTube
 before-all::
 	@echo -e "==> \033[1mPreparing to build YTLitePlus...\033[0m"
 	@if [ ! -d "$(THEOS)" ]; then \
-		echo "\033[31mError: THEOS environment not set up correctly.\033[0m"; exit 1; \
-	fi
+        echo "\033[31mError: THEOS environment not set up correctly.\033[0m"; exit 1; \
+    fi
 
 # Before-package steps
 before-package::
 	@echo -e "==> \033[1mPreparing YTLitePlus.dylib and FLEX resources...\033[0m"
 
-	# Ensure directory for dylib
+    # Ensure directory for dylib
 	@mkdir -p $(THEOS_STAGING_DIR)/Library/MobileSubstrate/DynamicLibraries
 
-	# Copy YTLitePlus.dylib
+    # Copy YTLitePlus.dylib
 	@if [ -f .theos/obj/$(TWEAK_NAME).dylib ]; then \
-		cp .theos/obj/$(TWEAK_NAME).dylib $(THEOS_STAGING_DIR)/Library/MobileSubstrate/DynamicLibraries/; \
-		echo "==> \033[32mYTLitePlus.dylib copied successfully.\033[0m"; \
-	else \
-		echo "\033[31mError: YTLitePlus.dylib not found.\033[0m"; exit 1; \
-	fi
+        cp .theos/obj/$(TWEAK_NAME).dylib $(THEOS_STAGING_DIR)/Library/MobileSubstrate/DynamicLibraries/; \
+        echo "==> \033[32mYTLitePlus.dylib copied successfully.\033[0m"; \
+    else \
+        echo "\033[31mError: YTLitePlus.dylib not found.\033[0m"; exit 1; \
+    fi
 
-	# Copy FLEX resources
+    # Copy FLEX resources
 	@if [ -d Tweaks/FLEX ]; then \
-		cp -R Tweaks/FLEX/* $(THEOS_STAGING_DIR)/Library/MobileSubstrate/DynamicLibraries/; \
-		echo "==> \033[32mFLEX resources copied successfully.\033[0m"; \
-	else \
-		echo "\033[33mWarning: FLEX resources not found, skipping.\033[0m"; \
-	fi
+        cp -R Tweaks/FLEX/* $(THEOS_STAGING_DIR)/Library/MobileSubstrate/DynamicLibraries/; \
+        echo "==> \033[32mFLEX resources copied successfully.\033[0m"; \
+    else \
+        echo "\033[33mWarning: FLEX resources not found, skipping.\033[0m"; \
+    fi
 
-	# Copy YTLitePlus.bundle
+    # Copy YTLitePlus.bundle
 	@echo -e "==> \033[1mMoving YTLitePlus.bundle to Application Support...\033[0m"
 	@mkdir -p $(THEOS_STAGING_DIR)/Library/Application\ Support/YTLitePlus
 	@if [ -d lang/YTLitePlus.bundle ]; then \
-		cp -R lang/YTLitePlus.bundle/* $(THEOS_STAGING_DIR)/Library/Application\ Support/YTLitePlus/; \
-		echo "==> \033[32mYTLitePlus.bundle copied successfully.\033[0m"; \
-	else \
-		echo "\033[33mWarning: YTLitePlus.bundle not found, skipping.\033[0m"; \
-	fi
+        cp -R lang/YTLitePlus.bundle/* $(THEOS_STAGING_DIR)/Library/Application\ Support/YTLitePlus/; \
+        echo "==> \033[32mYTLitePlus.bundle copied successfully.\033[0m"; \
+    else \
+        echo "\033[33mWarning: YTLitePlus.bundle not found, skipping.\033[0m"; \
+    fi
+
+    # Copy YTLitePlus.plist (Filter file)
+	@echo -e "==> \033[1mCopying YTLitePlus.plist to DynamicLibraries...\033[0m"
+	@cp YTLitePlus.plist $(THEOS_STAGING_DIR)/Library/MobileSubstrate/DynamicLibraries/
 
 # Clean-up resources after packaging
 internal-clean::
