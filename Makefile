@@ -1,95 +1,82 @@
-# Define target and architectures
-TARGET = iphone:clang:16.5:14.0
-ARCHS = arm64 arm64e
-MODULES = jailed
-FINALPACKAGE = 1
+# Project Configuration
+TARGET         = iphone:clang:16.5:14.0
+FINALPACKAGE   = 1
 PACKAGE_VERSION = 1.0
 
-# Tweak-specific details
-TWEAK_NAME = YTLitePlus
-DISPLAY_NAME = YouTube
-BUNDLE_ID = com.google.ios.youtube
+# Specify the desired architecture directly
+ARCH          = arm64  # Change to desired architecture as needed
+OBJ_PATH      = .theos/obj/arm64
+DYLIB_PATH    = $(OBJ_PATH)/YTLitePlus.dylib
 
-# Set up FLEX header paths dynamically
+# Tweak Information
+TWEAK_NAME    = YTLitePlus
+BUNDLE_ID     = com.google.ios.youtube
+
+# FLEX Headers
 FLEX_HEADER_PATHS := $(shell find Tweaks/FLEX -name '*.h' -exec dirname {} \; | uniq)
 EXTRA_CFLAGS := $(addprefix -I,$(FLEX_HEADER_PATHS)) -I$(THEOS_PROJECT_DIR)/Tweaks
 
-# Additional CFLAGS
-export ADDITIONAL_CFLAGS = $(EXTRA_CFLAGS)
-
-# Source files
-YTLitePlus_FILES = \
+# Source Files
+YTLitePlus_FILES := \
     YTLitePlus.xm \
-$(shell find Source -name '*.xm' -o -name '*.x' -o -name '*.m') \
-$(shell find Tweaks/FLEX -type f \( -iname \*.c -o -iname \*.m -o -iname \*.mm \))
+    $(shell find Source -name '*.xm' -o -name '*.x' -o -name '*.m') \
+    $(shell find Tweaks/FLEX -type f \( -iname \*.c -o -iname \*.m -o -iname \*.mm \))
 
-# Compiler flags and frameworks
-YTLitePlus_CFLAGS = -fobjc-arc \
+# Compilation and Linker Flags
+YTLitePlus_CFLAGS := \
+    -fobjc-arc \
     -Wno-deprecated-declarations \
     -Wno-unsupported-availability-guard \
     -Wno-unused-but-set-variable \
     -DTWEAK_VERSION=$(PACKAGE_VERSION) \
-$(EXTRA_CFLAGS)
+    $(EXTRA_CFLAGS)
 
-# Ensure we link the correct Substrate library
-YTLitePlus_LDFLAGS += -F$(SUBSTRATE)
-YTLitePlus_LIBRARIES += substrate
+YTLitePlus_LDFLAGS := \
+    -F$(THEOS)/lib \
+    $(filter-out -multiply_defined% -lc++, $(YTLitePlus_LDFLAGS))
 
-# Remove obsolete flags and duplicates
-YTLitePlus_LDFLAGS := $(filter-out -multiply_defined%,$(YTLitePlus_LDFLAGS))
-YTLitePlus_LDFLAGS := $(filter-out -lc++,$(YTLitePlus_LDFLAGS))
-
+# Libraries and Frameworks
+YTLitePlus_LIBRARIES = substrate
 YTLitePlus_FRAMEWORKS = UIKit Security
 
-# Include Theos common and tweak makefiles
+# Theos Setup
 include $(THEOS)/makefiles/common.mk
 include $(THEOS_MAKE_PATH)/tweak.mk
 
-# Packaging settings
-INSTALL_TARGET_PROCESSES = YouTube
-
-# Pre-build step
+# Pre-build Hook
 before-all::
-	@echo -e "==> \033[1mPreparing to build YTLitePlus...\033[0m"
+	@echo "==> Preparing to build YTLitePlus..."
 	@if [ ! -d "$(THEOS)" ]; then \
-        echo "\033[31mError: THEOS environment not set up correctly.\033[0m"; exit 1; \
-    fi
+		echo "Error: THEOS environment not set up correctly."; \
+		exit 1; \
+	fi
 
-# Before-package steps
+# Pre-package Hook
 before-package::
-	@echo -e "==> \033[1mPreparing YTLitePlus.dylib and FLEX resources...\033[0m"
+	@echo "==> Preparing resources..."
+	@mkdir -p "$(THEOS_STAGING_DIR)/Library/MobileSubstrate/DynamicLibraries"
+	@if [ ! -f "$(DYLIB_PATH)" ]; then \
+		echo "Error: YTLitePlus.dylib not found at '$(DYLIB_PATH)'. Please check the build."; \
+		exit 1; \
+	fi
+	@cp "$(DYLIB_PATH)" "$(THEOS_STAGING_DIR)/Library/MobileSubstrate/DynamicLibraries/"
+	@echo "==> YTLitePlus.dylib copied."
 
-    # Ensure directory for dylib
-	@mkdir -p $(THEOS_STAGING_DIR)/Library/MobileSubstrate/DynamicLibraries
-
-    # Copy YTLitePlus.dylib
-	@if [ -f .theos/obj/$(TWEAK_NAME).dylib ]; then \
-        cp .theos/obj/$(TWEAK_NAME).dylib $(THEOS_STAGING_DIR)/Library/MobileSubstrate/DynamicLibraries/; \
-        echo "==> \033[32mYTLitePlus.dylib copied successfully.\033[0m"; \
-    else \
-        echo "\033[31mError: YTLitePlus.dylib not found.\033[0m"; exit 1; \
-    fi
-
-    # Copy YTLitePlus.bundle
-	@echo -e "==> \033[1mMoving YTLitePlus.bundle to Application Support...\033[0m"
-	@mkdir -p $(THEOS_STAGING_DIR)/Library/Application\ Support/YTLitePlus.bundle
+	@mkdir -p "$(THEOS_STAGING_DIR)/Library/Application Support/YTLitePlus.bundle"
 	@if [ -d lang/YTLitePlus.bundle ]; then \
-        cp -R lang/YTLitePlus.bundle/* $(THEOS_STAGING_DIR)/Library/Application\ Support/YTLitePlus.bundle/; \
-        echo "==> \033[32mYTLitePlus.bundle copied successfully.\033[0m"; \
-    else \
-        echo "\033[33mWarning: YTLitePlus.bundle not found, skipping.\033[0m"; \
-    fi
+		cp -R lang/YTLitePlus.bundle/* "$(THEOS_STAGING_DIR)/Library/Application Support/YTLitePlus.bundle/"; \
+		echo "==> YTLitePlus.bundle copied."; \
+	else \
+		echo "Warning: YTLitePlus.bundle not found, skipping."; \
+	fi
 
-    # Copy YTLitePlus.plist (Filter file)
-	@echo -e "==> \033[1mCopying YTLitePlus.plist to DynamicLibraries...\033[0m"
-	@cp YTLitePlus.plist $(THEOS_STAGING_DIR)/Library/MobileSubstrate/DynamicLibraries/
+	@cp YTLitePlus.plist "$(THEOS_STAGING_DIR)/Library/MobileSubstrate/DynamicLibraries/"
 
-# Clean-up resources after packaging
-internal-clean::
-	@echo "==> \033[1mCleaning resources...\033[0m"
-	@rm -rf Resources/*
-
-# Ensure clean directory structure during clean-up
+# Cleaning Hooks
 clean::
-	@$(MAKE) internal-clean
-	@echo "==> \033[32mClean-up finished.\033[0m"
+	@echo "==> Cleaning resources..."
+	@rm -rf Resources/*
+	@echo "==> Clean-up finished."
+
+# Enable verbose build output for debugging
+export THEOS_BUILD_VERBOSE = 1
