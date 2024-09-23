@@ -4,8 +4,8 @@ FINALPACKAGE   = 1
 PACKAGE_VERSION = 1.0
 
 # Specify the desired architecture directly
-ARCH          = arm64  # Change to desired architecture as needed
-OBJ_PATH      = .theos/obj/arm64
+ARCH          = arm64
+OBJ_PATH      = .theos/obj/$(ARCH)
 DYLIB_PATH    = $(OBJ_PATH)/YTLitePlus.dylib
 
 # Tweak Information
